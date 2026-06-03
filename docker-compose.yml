@@ -1,0 +1,14 @@
+services:
+  startme-clone:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: startme-docker-clone
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=3001
+      - DATA_DIR=/app/data
+    restart: unless-stopped
