@@ -28,6 +28,12 @@ function App() {
   // Broken links alert state (number of alerts)
   const [brokenLinksCount, setBrokenLinksCount] = useState(0);
 
+  // Drag and Drop layout states
+  const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<number | null>(null);
+  const [dragOverWidgetId, setDragOverWidgetId] = useState<string | null>(null);
+  const [dragOverWidgetSide, setDragOverWidgetSide] = useState<'top' | 'bottom' | null>(null);
+
   // Fetch Global Settings
   const loadGlobalSettings = async () => {
     try {
@@ -94,6 +100,15 @@ function App() {
     }
   }, [globalSettings?.activePageId]);
 
+  // Update browser tab title dynamically
+  useEffect(() => {
+    if (pageConfig && pageConfig.title) {
+      document.title = `SweetHomePage - ${pageConfig.title}`;
+    } else {
+      document.title = 'SweetHomePage';
+    }
+  }, [pageConfig?.title]);
+
   const handleSelectPage = async (pageId: string) => {
     if (!globalSettings) return;
     
@@ -153,15 +168,193 @@ function App() {
     }
   };
 
+  // Drag and Drop layout handlers
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id);
+    setDraggedWidgetId(id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedWidgetId(null);
+    setDragOverCol(null);
+    setDragOverWidgetId(null);
+    setDragOverWidgetSide(null);
+  };
+
+  const handleDragOverCol = (e: React.DragEvent, colIndex: number) => {
+    e.preventDefault();
+    if (dragOverCol !== colIndex) {
+      setDragOverCol(colIndex);
+    }
+  };
+
+  const handleDragOverWidget = (e: React.DragEvent, widgetId: string) => {
+    e.preventDefault();
+    e.stopPropagation(); // Stop column drag over from taking over
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    const isTop = relativeY < rect.height / 2;
+    const side = isTop ? 'top' : 'bottom';
+    
+    if (dragOverWidgetId !== widgetId || dragOverWidgetSide !== side) {
+      setDragOverWidgetId(widgetId);
+      setDragOverWidgetSide(side);
+    }
+  };
+
+  const handleDragLeaveWidget = () => {
+    setDragOverWidgetId(null);
+    setDragOverWidgetSide(null);
+  };
+
+  const handleDropOnCol = async (e: React.DragEvent, targetCol: number) => {
+    e.preventDefault();
+    setDragOverCol(null);
+    const id = e.dataTransfer.getData('text/plain') || draggedWidgetId;
+    if (!id || !pageConfig) return;
+
+    // Filter widgets by target column and find max row to append at the end
+    const colWidgets = pageConfig.widgets.filter(
+      w => (w.position?.col ?? 0) === targetCol && w.id !== id
+    );
+    const maxRow = colWidgets.reduce((max, w) => Math.max(max, w.position?.row ?? 0), -1);
+
+    const updatedWidgets = pageConfig.widgets.map(w => {
+      if (w.id === id) {
+        return {
+          ...w,
+          position: {
+            ...w.position,
+            col: targetCol,
+            row: maxRow + 1
+          }
+        };
+      }
+      return w;
+    });
+
+    const updatedConfig = {
+      ...pageConfig,
+      widgets: updatedWidgets
+    };
+
+    setPageConfig(updatedConfig);
+    setDraggedWidgetId(null);
+
+    // Save to backend
+    try {
+      await fetch(`/api/pages/${pageConfig.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedConfig)
+      });
+    } catch (err) {
+      console.error('Failed to save drag drop col change:', err);
+    }
+  };
+
+  const handleDropOnWidget = async (e: React.DragEvent, targetWidgetId: string, targetCol: number) => {
+    e.preventDefault();
+    e.stopPropagation(); // Stop bubbling up to the column container
+    setDragOverCol(null);
+    setDragOverWidgetId(null);
+    setDragOverWidgetSide(null);
+    const id = e.dataTransfer.getData('text/plain') || draggedWidgetId;
+    if (!id || id === targetWidgetId || !pageConfig) return;
+
+    const targetWidget = pageConfig.widgets.find(w => w.id === targetWidgetId);
+    if (!targetWidget) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    const isTopHalf = relativeY < rect.height / 2;
+
+    const otherWidgets = pageConfig.widgets.filter(w => w.id !== id);
+    const targetColWidgets = otherWidgets.filter(w => (w.position?.col ?? 0) === targetCol);
+    targetColWidgets.sort((a, b) => (a.position?.row ?? 0) - (b.position?.row ?? 0));
+
+    let targetIdx = targetColWidgets.findIndex(w => w.id === targetWidgetId);
+    if (targetIdx === -1) {
+      targetIdx = targetColWidgets.length;
+    } else if (!isTopHalf) {
+      targetIdx = targetIdx + 1; // Insert after the target widget
+    }
+
+    const draggedWidget = pageConfig.widgets.find(w => w.id === id);
+    if (!draggedWidget) return;
+
+    const newDraggedWidget = {
+      ...draggedWidget,
+      position: {
+        ...draggedWidget.position,
+        col: targetCol
+      }
+    };
+
+    // Insert at index Y-adjusted position
+    targetColWidgets.splice(targetIdx, 0, newDraggedWidget);
+
+    // Re-index rows
+    targetColWidgets.forEach((w, idx) => {
+      w.position = {
+        ...w.position,
+        row: idx
+      };
+    });
+
+    // Re-assemble
+    const updatedWidgets = pageConfig.widgets.map(w => {
+      const updatedInCol = targetColWidgets.find(tc => tc.id === w.id);
+      if (updatedInCol) return updatedInCol;
+      if (w.id === id) return newDraggedWidget;
+      return w;
+    });
+
+    const updatedConfig = {
+      ...pageConfig,
+      widgets: updatedWidgets
+    };
+
+    setPageConfig(updatedConfig);
+    setDraggedWidgetId(null);
+
+    // Save to backend
+    try {
+      await fetch(`/api/pages/${pageConfig.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedConfig)
+      });
+    } catch (err) {
+      console.error('Failed to save drag drop widget change:', err);
+    }
+  };
+
   const handleAddWidget = async (type: 'bookmarks' | 'notes') => {
     if (!pageConfig) return;
+
+    // Find column with the fewest widgets to keep layout balanced at creation
+    let minCol = 0;
+    let minCount = Infinity;
+    const numColumns = pageConfig.settings?.columns || 3;
+    for (let c = 0; c < numColumns; c++) {
+      const count = pageConfig.widgets.filter(w => (w.position?.col ?? 0) === c).length;
+      if (count < minCount) {
+        minCount = count;
+        minCol = c;
+      }
+    }
+
+    const colWidgets = pageConfig.widgets.filter(w => (w.position?.col ?? 0) === minCol);
+    const maxRow = colWidgets.reduce((max, w) => Math.max(max, w.position?.row ?? 0), -1);
+    const newRow = maxRow + 1;
 
     const widgetTitle = type === 'bookmarks' ? 'Bookmarks Panel' : 'Notes notepad';
     const newWidget: Widget = {
       id: 'widget-' + Math.random().toString(36).substring(2, 9),
       type,
       title: widgetTitle,
-      position: { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+      position: { col: minCol, row: newRow, colSpan: 1, rowSpan: 1 },
       data: type === 'bookmarks' ? { items: [] } : { content: '' }
     };
 
@@ -235,7 +428,7 @@ function App() {
         <div className="header-left">
           <div className="app-logo">
             <Sparkles size={20} />
-            StartMeDocker
+            SweetHomePage
           </div>
 
           {/* Switcher Dropdown */}
@@ -363,45 +556,94 @@ function App() {
                 </p>
               </div>
             ) : (
-              <div className="widgets-grid">
-                {pageConfig.widgets.map(widget => (
-                  <div key={widget.id} className="glass-panel widget-card animate-fade-in">
-                    <div className="widget-header">
-                      <div 
-                        className="widget-title" 
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => handleUpdateWidgetTitle(widget.id, widget.title)}
-                        title="Click to rename"
-                      >
-                        {widget.type === 'bookmarks' ? <Bookmark size={15} style={{ color: 'var(--accent-color)' }} /> : <FileText size={15} style={{ color: 'var(--accent-color)' }} />}
-                        <span>{widget.title}</span>
-                      </div>
-                      <button 
-                        className="btn-icon" 
-                        style={{ color: 'var(--danger-color)' }}
-                        onClick={() => handleDeleteWidget(widget.id)}
-                        title="Delete Panel"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+              <div className="widgets-grid" style={{ gridTemplateColumns: `repeat(${pageConfig.settings?.columns || 3}, 1fr)` }}>
+                {Array.from({ length: pageConfig.settings?.columns || 3 }).map((_, colIndex) => {
+                  const numColumns = pageConfig.settings?.columns || 3;
+                  const colWidgets = pageConfig.widgets.filter(
+                    w => {
+                      const col = w.position?.col ?? 0;
+                      if (colIndex === numColumns - 1) {
+                        return col >= colIndex;
+                      }
+                      return col === colIndex;
+                    }
+                  );
+                  colWidgets.sort((a, b) => (a.position?.row ?? 0) - (b.position?.row ?? 0));
 
-                    <div className="widget-body">
-                      {widget.type === 'bookmarks' ? (
-                        <BookmarkWidget 
-                          widget={widget} 
-                          pageId={pageConfig.id} 
-                          onSaveWidgetData={handleSaveWidgetData} 
-                        />
-                      ) : (
-                        <NoteWidget 
-                          widget={widget} 
-                          onSaveWidgetData={handleSaveWidgetData} 
-                        />
-                      )}
+                  return (
+                    <div 
+                      key={colIndex} 
+                      className={`widgets-column ${dragOverCol === colIndex ? 'drag-over' : ''}`}
+                      onDragOver={(e) => handleDragOverCol(e, colIndex)}
+                      onDragLeave={(e) => e.preventDefault()}
+                      onDrop={(e) => handleDropOnCol(e, colIndex)}
+                      style={{
+                        minHeight: '450px',
+                        borderRadius: 'var(--radius-md)',
+                        transition: 'background var(--transition-fast), border-color var(--transition-fast)',
+                        border: dragOverCol === colIndex ? '2px dashed var(--border-focus)' : '2px dashed transparent',
+                        background: dragOverCol === colIndex ? 'rgba(118, 102, 240, 0.05)' : 'transparent',
+                        padding: '4px'
+                      }}
+                    >
+                      {colWidgets.map(widget => (
+                        <div 
+                          key={widget.id} 
+                          className="glass-panel widget-card animate-fade-in"
+                          draggable={true}
+                          onDragStart={(e) => handleDragStart(e, widget.id)}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={(e) => handleDragOverWidget(e, widget.id)}
+                          onDragLeave={handleDragLeaveWidget}
+                          onDrop={(e) => {
+                            handleDragLeaveWidget();
+                            handleDropOnWidget(e, widget.id, colIndex);
+                          }}
+                          style={{
+                            borderTop: (dragOverWidgetId === widget.id && dragOverWidgetSide === 'top') ? '2px solid var(--border-focus)' : undefined,
+                            borderBottom: (dragOverWidgetId === widget.id && dragOverWidgetSide === 'bottom') ? '2px solid var(--border-focus)' : undefined,
+                            transition: 'border var(--transition-fast)'
+                          }}
+                        >
+                          <div className="widget-header">
+                            <div 
+                              className="widget-title" 
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => handleUpdateWidgetTitle(widget.id, widget.title)}
+                              title="Click to rename"
+                            >
+                              {widget.type === 'bookmarks' ? <Bookmark size={15} style={{ color: 'var(--accent-color)' }} /> : <FileText size={15} style={{ color: 'var(--accent-color)' }} />}
+                              <span>{widget.title}</span>
+                            </div>
+                            <button 
+                              className="btn-icon" 
+                              style={{ color: 'var(--danger-color)' }}
+                              onClick={() => handleDeleteWidget(widget.id)}
+                              title="Delete Panel"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          <div className="widget-body">
+                            {widget.type === 'bookmarks' ? (
+                              <BookmarkWidget 
+                                widget={widget} 
+                                pageId={pageConfig.id} 
+                                onSaveWidgetData={handleSaveWidgetData} 
+                              />
+                            ) : (
+                              <NoteWidget 
+                                widget={widget} 
+                                onSaveWidgetData={handleSaveWidgetData} 
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

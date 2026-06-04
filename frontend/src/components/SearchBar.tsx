@@ -114,8 +114,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onNavigateToPage }) => {
             top: 'calc(100% + 8px)',
             left: 0,
             right: 0,
-            background: 'rgba(21, 23, 33, 0.95)',
-            boxShadow: '0 15px 30px rgba(0, 0, 0, 0.6)',
+            background: 'var(--bg-dropdown)',
+            boxShadow: 'var(--shadow-dropdown)',
             borderRadius: 'var(--radius-md)',
             maxHeight: '350px',
             overflowY: 'auto',
@@ -143,7 +143,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onNavigateToPage }) => {
                     transition: 'background var(--transition-fast)'
                   }}
                   className="search-item-hover"
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-dropdown-hover)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -171,7 +171,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onNavigateToPage }) => {
                             <span 
                               key={t} 
                               style={{ 
-                                background: 'rgba(255,255,255,0.06)', 
+                                background: 'var(--bg-tag)', 
                                 padding: '1px 5px', 
                                 borderRadius: '4px',
                                 border: '1px solid var(--border-glass)'

@@ -1,9 +1,9 @@
 services:
-  startme-clone:
+  sweet-home-page:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: startme-docker-clone
+    container_name: sweet-home-page
     ports:
       - "3001:3001"
     volumes:

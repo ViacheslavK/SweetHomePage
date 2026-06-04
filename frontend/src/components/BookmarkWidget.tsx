@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FolderPlus, Globe, AlertTriangle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Plus, FolderPlus, Globe, AlertTriangle, List, AlignJustify, Grid, Cloud } from 'lucide-react';
 import { BookmarkGroup } from './BookmarkGroup.js';
 import type { Widget, BookmarkItem, Link, Group } from '@startme/shared';
 
 interface BookmarkWidgetProps {
   widget: Widget;
   pageId: string;
-  onSaveWidgetData: (widgetId: string, data: { items: BookmarkItem[] }) => void;
+  onSaveWidgetData: (widgetId: string, data: { items?: BookmarkItem[]; viewMode?: 'list' | 'detailed' | 'icons' | 'cloud' }) => void;
 }
 
 export const BookmarkWidget: React.FC<BookmarkWidgetProps> = ({ widget, pageId, onSaveWidgetData }) => {
@@ -283,32 +284,118 @@ export const BookmarkWidget: React.FC<BookmarkWidgetProps> = ({ widget, pageId, 
     setIsGroupFormOpen(false);
   };
 
+  const currentViewMode = widget.data?.viewMode || 'list';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* List controls */}
       <div 
         style={{ 
           display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
           gap: '8px', 
           marginBottom: '1rem',
           borderBottom: '1px solid rgba(255,255,255,0.05)',
           paddingBottom: '0.75rem' 
         }}
       >
-        <button 
-          className="btn btn-secondary" 
-          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-          onClick={() => handleOpenAddLink()}
-        >
-          <Plus size={14} /> Add Link
-        </button>
-        <button 
-          className="btn btn-secondary" 
-          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-          onClick={() => handleOpenAddGroup()}
-        >
-          <FolderPlus size={14} /> Add Folder
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            className="btn btn-secondary" 
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+            onClick={() => handleOpenAddLink()}
+          >
+            <Plus size={14} /> Add Link
+          </button>
+          <button 
+            className="btn btn-secondary" 
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+            onClick={() => handleOpenAddGroup()}
+          >
+            <FolderPlus size={14} /> Add Folder
+          </button>
+        </div>
+
+        {/* View Mode Selectors */}
+        <div style={{ display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.03)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
+          <button
+            type="button"
+            className="btn-icon"
+            style={{
+              padding: '4px 6px',
+              borderRadius: '4px',
+              background: currentViewMode === 'list' ? 'var(--accent-color)' : 'transparent',
+              color: currentViewMode === 'list' ? '#fff' : 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onClick={() => onSaveWidgetData(widget.id, { viewMode: 'list' })}
+            title="List View"
+          >
+            <List size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn-icon"
+            style={{
+              padding: '4px 6px',
+              borderRadius: '4px',
+              background: currentViewMode === 'detailed' ? 'var(--accent-color)' : 'transparent',
+              color: currentViewMode === 'detailed' ? '#fff' : 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onClick={() => onSaveWidgetData(widget.id, { viewMode: 'detailed' })}
+            title="Detailed List View"
+          >
+            <AlignJustify size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn-icon"
+            style={{
+              padding: '4px 6px',
+              borderRadius: '4px',
+              background: currentViewMode === 'icons' ? 'var(--accent-color)' : 'transparent',
+              color: currentViewMode === 'icons' ? '#fff' : 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onClick={() => onSaveWidgetData(widget.id, { viewMode: 'icons' })}
+            title="Grid of Icons View"
+          >
+            <Grid size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn-icon"
+            style={{
+              padding: '4px 6px',
+              borderRadius: '4px',
+              background: currentViewMode === 'cloud' ? 'var(--accent-color)' : 'transparent',
+              color: currentViewMode === 'cloud' ? '#fff' : 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onClick={() => onSaveWidgetData(widget.id, { viewMode: 'cloud' })}
+            title="Cloud View"
+          >
+            <Cloud size={14} />
+          </button>
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -319,6 +406,7 @@ export const BookmarkWidget: React.FC<BookmarkWidgetProps> = ({ widget, pageId, 
         ) : (
           <BookmarkGroup
             items={items}
+            viewMode={currentViewMode}
             onAddLink={handleOpenAddLink}
             onAddGroup={handleOpenAddGroup}
             onEditLink={handleOpenEditLink}
@@ -329,9 +417,9 @@ export const BookmarkWidget: React.FC<BookmarkWidgetProps> = ({ widget, pageId, 
       </div>
 
       {/* LINK DIALOG */}
-      {isLinkFormOpen && (
+      {isLinkFormOpen && createPortal(
         <div className="modal-overlay">
-          <form className="glass-panel modal-content" onSubmit={handleSaveLink} style={{ background: 'rgba(20,22,30,0.95)' }}>
+          <form className="glass-panel modal-content" onSubmit={handleSaveLink} style={{ background: 'var(--bg-modal)' }}>
             <div className="modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Globe size={18} style={{ color: 'var(--accent-color)' }} />
@@ -425,13 +513,14 @@ export const BookmarkWidget: React.FC<BookmarkWidgetProps> = ({ widget, pageId, 
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* GROUP / FOLDER DIALOG */}
-      {isGroupFormOpen && (
+      {isGroupFormOpen && createPortal(
         <div className="modal-overlay">
-          <form className="glass-panel modal-content" onSubmit={handleSaveGroup} style={{ background: 'rgba(20,22,30,0.95)' }}>
+          <form className="glass-panel modal-content" onSubmit={handleSaveGroup} style={{ background: 'var(--bg-modal)' }}>
             <div className="modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Plus size={18} style={{ color: 'var(--accent-color)' }} />
@@ -473,7 +562,8 @@ export const BookmarkWidget: React.FC<BookmarkWidgetProps> = ({ widget, pageId, 
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Edit2, Save } from 'lucide-react';
 import type { Widget } from '@startme/shared';
 
@@ -11,6 +11,18 @@ export const NoteWidget: React.FC<NoteWidgetProps> = ({ widget, onSaveWidgetData
   const initialContent = (widget.data && widget.data.content) || '';
   const [content, setContent] = useState(initialContent);
   const [isEditing, setIsEditing] = useState(initialContent === '');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = (el: HTMLTextAreaElement) => {
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 4}px`;
+  };
+
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      adjustHeight(textareaRef.current);
+    }
+  }, [isEditing]);
 
   const handleSave = () => {
     onSaveWidgetData(widget.id, { content });
@@ -87,19 +99,24 @@ export const NoteWidget: React.FC<NoteWidgetProps> = ({ widget, onSaveWidgetData
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {isEditing ? (
           <textarea
+            ref={textareaRef}
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => {
+              setContent(e.target.value);
+              adjustHeight(e.target);
+            }}
             placeholder="Type your markdown notes here... e.g. # Header, - [ ] Task item, [Link](url)"
             className="input-field"
             style={{
               width: '100%',
-              flex: 1,
               resize: 'none',
               fontFamily: 'monospace',
               fontSize: '0.85rem',
               lineHeight: '1.4',
               padding: '0.75rem',
-              background: 'rgba(0,0,0,0.25)'
+              background: 'rgba(0,0,0,0.25)',
+              minHeight: '180px',
+              overflow: 'hidden'
             }}
           />
         ) : (

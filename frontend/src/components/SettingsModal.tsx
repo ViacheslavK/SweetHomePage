@@ -193,7 +193,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       <div 
         className="glass-panel modal-content" 
         style={{ 
-          background: 'rgba(18, 19, 28, 0.95)',
+          background: 'var(--bg-modal)',
           border: '1px solid var(--border-glass)' 
         }}
       >
@@ -365,9 +365,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="btn"
                   style={{
                     flex: 1,
-                    background: globalSettings.globalTheme === 'dark-glass' ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
+                    background: globalSettings.globalTheme === 'dark-glass' ? 'var(--accent-color)' : 'var(--bg-dropdown-hover)',
                     border: '1px solid var(--border-glass)',
-                    color: '#fff',
+                    color: globalSettings.globalTheme === 'dark-glass' ? '#fff' : 'var(--text-primary)',
                     padding: '1.5rem',
                     borderRadius: 'var(--radius-md)'
                   }}
@@ -379,7 +379,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="btn"
                   style={{
                     flex: 1,
-                    background: globalSettings.globalTheme === 'light-glass' ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
+                    background: globalSettings.globalTheme === 'light-glass' ? 'var(--accent-color)' : 'var(--bg-dropdown-hover)',
                     border: '1px solid var(--border-glass)',
                     color: globalSettings.globalTheme === 'light-glass' ? '#fff' : 'var(--text-primary)',
                     padding: '1.5rem',

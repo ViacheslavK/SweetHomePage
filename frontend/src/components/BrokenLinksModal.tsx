@@ -214,7 +214,7 @@ export const BrokenLinksModal: React.FC<BrokenLinksModalProps> = ({ isOpen, onCl
         style={{ 
           maxWidth: '800px', 
           width: '95%', 
-          background: 'rgba(18, 19, 28, 0.95)',
+          background: 'var(--bg-modal)',
           border: '1px solid var(--border-glass)' 
         }}
       >

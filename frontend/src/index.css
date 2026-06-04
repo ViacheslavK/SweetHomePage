@@ -34,6 +34,13 @@
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Theme-adaptive components variables */
+  --bg-dropdown: #191b26;
+  --bg-dropdown-hover: rgba(255, 255, 255, 0.08);
+  --bg-modal: rgba(18, 19, 28, 0.95);
+  --bg-tag: rgba(255, 255, 255, 0.06);
+  --shadow-dropdown: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
 
 /* Light Glass alternative values for switching */
@@ -50,6 +57,13 @@
   
   --accent: 250, 75%, 55%;
   --accent-glow: rgba(118, 102, 240, 0.15);
+
+  /* Light Theme-adaptive component variables */
+  --bg-dropdown: #ffffff;
+  --bg-dropdown-hover: rgba(0, 0, 0, 0.05);
+  --bg-modal: rgba(255, 255, 255, 0.95);
+  --bg-tag: rgba(0, 0, 0, 0.05);
+  --shadow-dropdown: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 * {
@@ -291,6 +305,12 @@ body {
   align-items: start;
 }
 
+.widgets-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 /* Support for responsive grids on smaller viewports */
 @media (max-width: 1024px) {
   .widgets-grid {
@@ -308,7 +328,7 @@ body {
 .widget-card {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
   min-height: 250px;
   overflow: hidden;
 }
@@ -319,6 +339,11 @@ body {
   align-items: center;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border-glass);
+  cursor: grab;
+}
+
+.widget-header:active {
+  cursor: grabbing;
 }
 
 .widget-title {
@@ -353,6 +378,7 @@ body {
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
+  color: var(--text-primary);
   transition: all var(--transition-fast);
 }
 
@@ -366,10 +392,10 @@ body {
   top: calc(100% + 5px);
   left: 0;
   min-width: 180px;
-  background: #191b26;
+  background: var(--bg-dropdown);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-sm);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-dropdown);
   padding: 0.5rem 0;
   list-style: none;
   z-index: 50;
@@ -385,7 +411,7 @@ body {
 }
 
 .dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-dropdown-hover);
   color: var(--text-primary);
 }
 

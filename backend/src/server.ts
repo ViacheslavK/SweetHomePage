@@ -25,7 +25,7 @@ app.get('*', (req, res, next) => {
   }
   res.sendFile(path.join(publicDir, 'index.html'), (err) => {
     if (err) {
-      res.status(200).send('StartMeDockerClon API Server is online. Frontend assets not found in public folder.');
+      res.status(200).send('SweetHomePage API Server is online. Frontend assets not found in public folder.');
     }
   });
 });
@@ -37,7 +37,7 @@ async function main() {
     
     app.listen(PORT, () => {
       console.log(`========================================`);
-      console.log(` StartMeDockerClon running on port ${PORT}`);
+      console.log(` SweetHomePage running on port ${PORT}`);
       console.log(` Data storage folder: ${path.resolve(process.env.DATA_DIR || './data')}`);
       console.log(` Static public folder: ${path.resolve(publicDir)}`);
       console.log(`========================================`);

@@ -52,6 +52,7 @@ export type Widget = z.infer<typeof WidgetSchema>;
 
 export const BookmarksDataSchema = z.object({
   items: z.array(BookmarkItemSchema),
+  viewMode: z.union([z.literal('list'), z.literal('detailed'), z.literal('icons'), z.literal('cloud')]).optional(),
 });
 
 export type BookmarksData = z.infer<typeof BookmarksDataSchema>;
