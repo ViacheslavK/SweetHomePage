@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { lookup } from 'dns/promises';
 import { 
   readGlobalSettings, 
   writeGlobalSettings, 
@@ -223,6 +224,31 @@ router.get('/links/check-duplicate', async (req: Request, res: Response) => {
   }
 });
 
+// --- SSRF Protection Helper ---
+/**
+ * Returns true if the given IP address is a private/internal address
+ * that should not be reachable from a server-side fetch (SSRF mitigation).
+ * Blocks: loopback, RFC-1918 private ranges, link-local (169.254.x.x),
+ * and IPv6 loopback/link-local.
+ */
+function isPrivateIp(ip: string): boolean {
+  // IPv6 loopback and link-local
+  if (ip === '::1' || ip.startsWith('fe80:') || ip.startsWith('fc') || ip.startsWith('fd')) {
+    return true;
+  }
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(isNaN)) return false; // not IPv4, treat as safe
+  const [a, b] = parts;
+  return (
+    a === 127 ||                          // 127.0.0.0/8  loopback
+    a === 10 ||                           // 10.0.0.0/8   RFC-1918
+    (a === 172 && b >= 16 && b <= 31) ||  // 172.16.0.0/12 RFC-1918
+    (a === 192 && b === 168) ||           // 192.168.0.0/16 RFC-1918
+    (a === 169 && b === 254) ||           // 169.254.0.0/16 link-local / cloud metadata
+    a === 0                               // 0.0.0.0/8
+  );
+}
+
 // --- URL Metadata Scraper ---
 router.get('/links/metadata', async (req: Request, res: Response) => {
   try {
@@ -235,6 +261,38 @@ router.get('/links/metadata', async (req: Request, res: Response) => {
     if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
       targetUrl = 'https://' + targetUrl;
     }
+
+    // --- SSRF validation ---
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(targetUrl);
+    } catch {
+      return res.status(400).json({ error: 'Invalid URL' });
+    }
+
+    // Only allow http and https schemes
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      return res.status(400).json({ error: 'Only http and https URLs are allowed' });
+    }
+
+    // Block bare IP literals that are private
+    const hostname = parsedUrl.hostname;
+    if (isPrivateIp(hostname)) {
+      return res.status(400).json({ error: 'Requests to private/internal addresses are not allowed' });
+    }
+
+    // Resolve hostname to IP and verify it is not a private address
+    // (prevents DNS rebinding attacks)
+    try {
+      const resolved = await lookup(hostname);
+      if (isPrivateIp(resolved.address)) {
+        return res.status(400).json({ error: 'Requests to private/internal addresses are not allowed' });
+      }
+    } catch {
+      // If DNS resolution fails, refuse the request
+      return res.json({ title: '', description: '' });
+    }
+    // --- end SSRF validation ---
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
