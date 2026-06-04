@@ -1,4 +1,6 @@
 # Dependencies
+# Note: This root .gitignore uses ** globs and covers all sub-packages
+# (frontend/, backend/, shared/) — no sub-package .gitignore files needed.
 **/node_modules
 **/jspm_packages
 **/web_modules
@@ -23,8 +25,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Runtime/Data Directories
-data/
+# Runtime/Data Directories (user data written at runtime, not committed)
+/data/
+/backend/data/
 
 # Local Environment Variables
 .env
