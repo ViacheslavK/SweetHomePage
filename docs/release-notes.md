@@ -4,6 +4,32 @@ All notable changes and features implemented in this project are documented here
 
 ---
 
+## [0.0.3] - 2026-06-04
+
+### New Features
+
+#### 1. Individual Link Recheck
+- Added a **Recheck** button next to occurrences in the diagnostics view.
+- Allows users to re-test the health of a specific link without running a full scan across the entire dashboard.
+- If the rechecked link is healthy (`type === 'ok'`), it is automatically removed from the list of diagnostics.
+- If the rechecked link is still failing, its state (status, redirect URL, or failure message) is dynamically updated in the list of results.
+
+#### 2. Scan Pause and Stop Controls
+- Added dedicated **Pause/Resume** and **Stop** buttons to the header of the diagnostics view during active scans.
+- **Pause/Resume**: Temporarily suspends the background scanner queue, stopping the visual rotation of progress indicators. Resuming immediately continues processing remaining URLs.
+- **Stop**: Immediately aborts the remaining queue workers, terminates the scanning job, and writes back the partial diagnostics results gathered up to that point.
+
+### Technical Changes
+
+| File | Change |
+|---|---|
+| `backend/src/checker.ts` | Added `isPaused` and `isStopped` flags; implemented `pauseChecker`, `resumeChecker`, `stopChecker`, and `recheckUrl` functions; updated worker loop to check flags. |
+| `backend/src/routes.ts` | Added route endpoints `/checker/pause`, `/checker/resume`, `/checker/stop`, `/checker/recheck`; returned `paused` status in `/checker/results`. |
+| `backend/src/swagger.ts` | Added path descriptions for the new endpoints. |
+| `frontend/src/components/BrokenLinksModal.tsx` | Added UI controls (Play, Pause, Square, RotateCw buttons), states for `paused` and `recheckingUrls`, and API call triggers. |
+
+---
+
 ## [0.0.2] - 2026-06-04
 
 ### New Features

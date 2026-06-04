@@ -7,9 +7,34 @@ import {
 import { getAllLinksFromPage } from '@startme/shared';
 
 let isRunning = false;
+let isPaused = false;
+let isStopped = false;
 
 export function isCheckerRunning(): boolean {
   return isRunning;
+}
+
+export function isCheckerPaused(): boolean {
+  return isPaused;
+}
+
+export function pauseChecker(): void {
+  if (isRunning) {
+    isPaused = true;
+  }
+}
+
+export function resumeChecker(): void {
+  if (isRunning) {
+    isPaused = false;
+  }
+}
+
+export function stopChecker(): void {
+  if (isRunning) {
+    isStopped = true;
+    isPaused = false; // ensure we break from pause sleep immediately
+  }
 }
 
 interface CheckerOccurrence {
@@ -172,7 +197,12 @@ export async function runChecker(): Promise<void> {
     const queue = [...urlsToCheck];
 
     async function worker() {
-      while (queue.length > 0) {
+      while (queue.length > 0 && !isStopped) {
+        if (isPaused) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          continue;
+        }
+
         const url = queue.shift();
         if (!url) continue;
 
@@ -216,10 +246,38 @@ export async function runChecker(): Promise<void> {
     console.error('Broken link checker encountered a severe error:', error);
   } finally {
     isRunning = false;
+    isPaused = false;
+    isStopped = false;
     try {
       const state = await readBrokenLinks();
       state.running = false;
       await writeBrokenLinks(state);
     } catch {}
   }
+}
+
+export async function recheckUrl(url: string): Promise<{ type: 'ok' | 'redirect' | 'broken'; status: number; message: string; redirectUrl?: string }> {
+  const checkRes = await checkUrl(url);
+  const data = await readBrokenLinks();
+  if (data && Array.isArray(data.results)) {
+    if (checkRes.type === 'ok') {
+      // Remove all occurrences of this url since it's now OK
+      data.results = data.results.filter((r: any) => r.url !== url);
+    } else {
+      // Update result details in the list
+      let found = false;
+      data.results = data.results.map((r: any) => {
+        if (r.url === url) {
+          r.type = checkRes.type;
+          r.status = checkRes.status;
+          r.message = checkRes.message;
+          r.redirectUrl = checkRes.redirectUrl;
+          found = true;
+        }
+        return r;
+      });
+    }
+    await writeBrokenLinks(data);
+  }
+  return checkRes;
 }

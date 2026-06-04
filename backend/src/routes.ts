@@ -6,9 +6,10 @@ import {
   readPageConfig, 
   writePageConfig, 
   deletePageConfig,
-  readBrokenLinks
+  readBrokenLinks,
+  writeBrokenLinks
 } from './storage.js';
-import { runChecker, isCheckerRunning } from './checker.js';
+import { runChecker, isCheckerRunning, isCheckerPaused, pauseChecker, resumeChecker, stopChecker, recheckUrl } from './checker.js';
 import { PageConfig, PageListItem, getAllLinksFromPage } from '@startme/shared';
 
 const router = Router();
@@ -364,7 +365,8 @@ router.get('/checker/results', async (req: Request, res: Response) => {
     const data = await readBrokenLinks();
     res.json({
       ...data,
-      running: isCheckerRunning()
+      running: isCheckerRunning(),
+      paused: isCheckerPaused()
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to read checker results' });
@@ -383,6 +385,83 @@ router.post('/checker/run', async (req: Request, res: Response) => {
     res.status(202).json({ message: 'Link check started' });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to start checker' });
+  }
+});
+
+router.post('/checker/pause', async (req: Request, res: Response) => {
+  try {
+    pauseChecker();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to pause checker' });
+  }
+});
+
+router.post('/checker/resume', async (req: Request, res: Response) => {
+  try {
+    resumeChecker();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to resume checker' });
+  }
+});
+
+router.post('/checker/stop', async (req: Request, res: Response) => {
+  try {
+    stopChecker();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to stop checker' });
+  }
+});
+
+router.post('/checker/recheck', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.body;
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'url is required in the request body' });
+    }
+    const result = await recheckUrl(url);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to recheck url' });
+  }
+});
+
+router.delete('/checker/occurrences', async (req: Request, res: Response) => {
+  try {
+    const { pageId, linkId } = req.query;
+    if (!pageId || !linkId || typeof pageId !== 'string' || typeof linkId !== 'string') {
+      return res.status(400).json({ error: 'pageId and linkId query parameters are required' });
+    }
+
+    const data = await readBrokenLinks();
+    if (data && Array.isArray(data.results)) {
+      let modified = false;
+      
+      data.results = data.results.map((result: any) => {
+        if (!Array.isArray(result.occurrences)) return result;
+        const initialCount = result.occurrences.length;
+        result.occurrences = result.occurrences.filter(
+          (occ: any) => !(occ.pageId === pageId && occ.id === linkId)
+        );
+        if (result.occurrences.length !== initialCount) {
+          modified = true;
+        }
+        return result;
+      });
+
+      // Filter out results that no longer have any occurrences left
+      data.results = data.results.filter((result: any) => Array.isArray(result.occurrences) && result.occurrences.length > 0);
+
+      if (modified) {
+        await writeBrokenLinks(data);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to delete occurrence' });
   }
 });
 

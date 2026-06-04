@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertTriangle, RefreshCw, CheckCircle, ArrowRight, Trash2 } from 'lucide-react';
+import { X, AlertTriangle, RefreshCw, CheckCircle, ArrowRight, Trash2, RotateCw, Play, Pause, Square } from 'lucide-react';
 import type { PageConfig, BookmarkItem } from '@startme/shared';
 
 interface BrokenLinksModalProps {
@@ -32,6 +32,8 @@ export const BrokenLinksModal: React.FC<BrokenLinksModalProps> = ({ isOpen, onCl
   const [lastChecked, setLastChecked] = useState<string | null>(null);
   const [results, setResults] = useState<BrokenResult[]>([]);
   const [activeTab, setActiveTab] = useState<'broken' | 'redirect'>('broken');
+  const [paused, setPaused] = useState(false);
+  const [recheckingUrls, setRecheckingUrls] = useState<Record<string, boolean>>({});
 
   // Load results from backend
   const loadResults = async () => {
@@ -43,6 +45,7 @@ export const BrokenLinksModal: React.FC<BrokenLinksModalProps> = ({ isOpen, onCl
         setResults(data.results || []);
         setLastChecked(data.lastChecked);
         setChecking(data.running);
+        setPaused(data.paused || false);
       }
     } catch (error) {
       console.error('Failed to load checker results:', error);
@@ -67,6 +70,7 @@ export const BrokenLinksModal: React.FC<BrokenLinksModalProps> = ({ isOpen, onCl
           if (response.ok) {
             const data = await response.json();
             setChecking(data.running);
+            setPaused(data.paused || false);
             if (!data.running) {
               setResults(data.results || []);
               setLastChecked(data.lastChecked);
@@ -154,11 +158,17 @@ export const BrokenLinksModal: React.FC<BrokenLinksModalProps> = ({ isOpen, onCl
           body: JSON.stringify(config)
         });
         if (!saveRes.ok) throw new Error('Failed to save page config');
-
-        alert('Link successfully deleted!');
-        onRefreshPageData();
-        loadResults(); // Reload broken links list
       }
+
+      // 4. Remove from broken-links.json report
+      const deleteOccRes = await fetch(`/api/checker/occurrences?pageId=${encodeURIComponent(occ.pageId)}&linkId=${encodeURIComponent(occ.id)}`, {
+        method: 'DELETE'
+      });
+      if (!deleteOccRes.ok) throw new Error('Failed to update diagnostics list');
+
+      alert('Link successfully deleted!');
+      onRefreshPageData();
+      loadResults(); // Reload broken links list
     } catch (err: any) {
       console.error(err);
       alert(`Error: ${err.message}`);
@@ -192,14 +202,79 @@ export const BrokenLinksModal: React.FC<BrokenLinksModalProps> = ({ isOpen, onCl
           body: JSON.stringify(config)
         });
         if (!saveRes.ok) throw new Error('Failed to save page config');
+      }
 
-        alert('Link URL updated to redirected address!');
-        onRefreshPageData();
-        loadResults();
+      // 4. Remove from broken-links.json report
+      const deleteOccRes = await fetch(`/api/checker/occurrences?pageId=${encodeURIComponent(occ.pageId)}&linkId=${encodeURIComponent(occ.id)}`, {
+        method: 'DELETE'
+      });
+      if (!deleteOccRes.ok) throw new Error('Failed to update diagnostics list');
+
+      alert('Link URL updated to redirected address!');
+      onRefreshPageData();
+      loadResults();
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleTogglePause = async () => {
+    const action = paused ? 'resume' : 'pause';
+    try {
+      const res = await fetch(`/api/checker/${action}`, { method: 'POST' });
+      if (res.ok) {
+        setPaused(!paused);
+      } else {
+        alert(`Failed to ${action} scan`);
       }
     } catch (err: any) {
       console.error(err);
       alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleStop = async () => {
+    if (!window.confirm('Are you sure you want to stop the scan?')) return;
+    try {
+      const res = await fetch('/api/checker/stop', { method: 'POST' });
+      if (res.ok) {
+        setChecking(false);
+        setPaused(false);
+        loadResults();
+      } else {
+        alert('Failed to stop scan');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleRecheck = async (url: string) => {
+    setRecheckingUrls(prev => ({ ...prev, [url]: true }));
+    try {
+      const response = await fetch('/api/checker/recheck', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.type === 'ok') {
+          alert('Link is now working and has been removed from the diagnostics list!');
+        } else {
+          alert(`Link check result: ${data.message} (status: ${data.status})`);
+        }
+        loadResults();
+      } else {
+        throw new Error('Failed to recheck link');
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert(`Error rechecking link: ${error.message}`);
+    } finally {
+      setRecheckingUrls(prev => ({ ...prev, [url]: false }));
     }
   };
 
@@ -247,19 +322,41 @@ export const BrokenLinksModal: React.FC<BrokenLinksModalProps> = ({ isOpen, onCl
             </div>
             {checking && (
               <div style={{ color: 'var(--warning-color)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <RefreshCw size={14} className="animate-spin" style={{ animation: 'spin 2s linear infinite' }} />
-                Scanning all pages in background...
+                <RefreshCw size={14} className={paused ? "" : "animate-spin"} style={paused ? {} : { animation: 'spin 2s linear infinite' }} />
+                {paused ? 'Scan paused' : 'Scanning all pages in background...'}
               </div>
             )}
           </div>
-          <button 
-            className="btn btn-primary" 
-            onClick={handleRunCheck}
-            disabled={checking}
-          >
-            <RefreshCw size={16} className={checking ? "animate-spin" : ""} style={checking ? { animation: 'spin 2s linear infinite' } : {}} />
-            {checking ? 'Scanning...' : 'Scan Now'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {checking && (
+              <>
+                <button
+                  className="btn btn-secondary"
+                  style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={handleTogglePause}
+                  title={paused ? 'Resume Scan' : 'Pause Scan'}
+                >
+                  {paused ? <Play size={16} /> : <Pause size={16} />}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger-color)' }}
+                  onClick={handleStop}
+                  title="Stop Scan"
+                >
+                  <Square size={16} fill="var(--danger-color)" />
+                </button>
+              </>
+            )}
+            <button 
+              className="btn btn-primary" 
+              onClick={handleRunCheck}
+              disabled={checking}
+            >
+              <RefreshCw size={16} className={checking && !paused ? "animate-spin" : ""} style={checking && !paused ? { animation: 'spin 2s linear infinite' } : {}} />
+              {checking ? (paused ? 'Paused' : 'Scanning...') : 'Scan Now'}
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -367,6 +464,15 @@ export const BrokenLinksModal: React.FC<BrokenLinksModalProps> = ({ isOpen, onCl
                             Apply Link Fix
                           </button>
                         )}
+                        <button 
+                          className="btn btn-secondary" 
+                          style={{ padding: '3px 8px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px' }}
+                          onClick={() => handleRecheck(res.url)}
+                          disabled={recheckingUrls[res.url]}
+                        >
+                          <RotateCw size={10} className={recheckingUrls[res.url] ? "animate-spin" : ""} style={recheckingUrls[res.url] ? { animation: 'spin 2s linear infinite' } : {}} />
+                          {recheckingUrls[res.url] ? 'Checking...' : 'Recheck'}
+                        </button>
                         <button 
                           className="btn-icon" 
                           style={{ color: 'var(--danger-color)', padding: '2px' }}

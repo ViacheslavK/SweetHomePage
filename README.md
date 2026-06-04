@@ -16,7 +16,7 @@ A lightweight, self-hosted browser start page you can run anywhere with Docker. 
   - Drop a widget or folder onto another bookmarks widget to choose: *Place Above*, *Place Below*, or *Insert Inside*.
 - **Browser Bookmark Import**: Import your existing bookmarks from a Firefox or Chrome HTML export file, preserving the full recursive folder structure. Includes a *Load Demo Bookmarks* button.
 - **Markdown Notepad**: Take notes inside customizable markdown widgets with auto-resizing text boxes.
-- **Broken Link Scanner & Diagnostics**: Background checks for saved URLs to trace HTTP redirects and dead links.
+- **Broken Link Scanner & Diagnostics**: Background checks for saved URLs to trace HTTP redirects and dead links. Supports pause/stop controls for global scans and individual bookmark recheck actions.
 - **HTML Scraper**: Autocompletes link titles and descriptions directly from URL metadata.
 - **Duplicate Warnings**: Live warnings during bookmark entry if a URL is already saved on another page.
 - **Stable Column Layout**: Column widths are strictly locked to equal fractions of the page width; long text wraps rather than stretching columns.
@@ -38,6 +38,7 @@ docker compose up --build -d
 
 Once started, the server will compile all assets and boot up. Access the dashboard in your web browser:
 - URL: **`http://localhost:3001`**
+- API Documentation (Swagger UI): **`http://localhost:3001/api-docs`**
 
 ---
 

@@ -2,8 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import * as path from 'path';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
 import router from './routes.js';
 import { initStorage } from './storage.js';
+import { swaggerDocument } from './swagger.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -32,6 +34,9 @@ const staticLimiter = rateLimit({
 // API Router
 app.use('/api', apiLimiter, router);
 
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 // Static frontend distribution serve point
 const publicDir = process.env.PUBLIC_DIR || path.join(process.cwd(), 'public');
 app.use(express.static(publicDir));
@@ -39,7 +44,7 @@ app.use(express.static(publicDir));
 // React SPA fallback routing
 app.get('*', staticLimiter, (req, res, next) => {
   // If the path starts with /api, let Express handle it normally (should have been matched by router already)
-  if (req.path.startsWith('/api')) {
+  if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) {
     return next();
   }
   res.sendFile(path.join(publicDir, 'index.html'), (err) => {
@@ -57,6 +62,7 @@ async function main() {
     app.listen(PORT, () => {
       console.log(`========================================`);
       console.log(` SweetHomePage running on port ${PORT}`);
+      console.log(` API Docs: http://localhost:${PORT}/api-docs`);
       console.log(` Data storage folder: ${path.resolve(process.env.DATA_DIR || './data')}`);
       console.log(` Static public folder: ${path.resolve(publicDir)}`);
       console.log(`========================================`);
