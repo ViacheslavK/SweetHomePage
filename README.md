@@ -78,3 +78,9 @@ Since all page designs, widgets, and links are kept as plain JSON files, backing
 ## Releases & Changes
 
 For detailed features, updates, and changes from scratch, refer to the [Release Notes](docs/release-notes.md).
+
+---
+
+## Acknowledgements
+
+- **[start.me](https://start.me/)** — a great tool and super motivational for creating our own local, self-hosted dashboard.
