@@ -1,8 +1,7 @@
 # SweetHomePage
 
-A local, lightweight, self-hosted, and containerized clone of the **start.me** start page dashboard. 
+A lightweight, self-hosted browser start page you can run anywhere with Docker. Organize your bookmarks, folders, and notes in a personal dashboard that lives entirely on your own machine — no accounts, no cloud, no tracking.
 
-**SweetHomePage** organizes your bookmarks, links, folders, and markdown notes within a modern glassmorphic interface, storing all page data directly as plain JSON configuration files on your host machine.
 
 ---
 
@@ -10,11 +9,18 @@ A local, lightweight, self-hosted, and containerized clone of the **start.me** s
 - **Multi-Dashboard Switcher**: Switch dynamically between separate start page configurations.
 - **Collapsible Recursive Folders**: Arrange links with infinite nested folder hierarchies.
 - **Four Bookmark View Modes**: Switch each widget individually between *List*, *Detailed List*, *Grid of Icons*, and *Cloud View*.
-- **Drag-and-Drop Editor**: Reorder widgets, sort columns, or move widgets across column rows with real-time insertion preview guides.
+- **Advanced Drag-and-Drop Editor**:
+  - Reorder and move entire **widgets** between columns with real-time insertion preview guides.
+  - Drag a **folder/sub-group** out of a bookmarks widget to extract it as a new independent widget.
+  - Drag **individual bookmark links** between any bookmarks widgets or drop them directly into a sub-group folder (highlighted with an accent border on hover).
+  - Drop a widget or folder onto another bookmarks widget to choose: *Place Above*, *Place Below*, or *Insert Inside*.
+- **Browser Bookmark Import**: Import your existing bookmarks from a Firefox or Chrome HTML export file, preserving the full recursive folder structure. Includes a *Load Demo Bookmarks* button.
 - **Markdown Notepad**: Take notes inside customizable markdown widgets with auto-resizing text boxes.
 - **Broken Link Scanner & Diagnostics**: Background checks for saved URLs to trace HTTP redirects and dead links.
 - **HTML Scraper**: Autocompletes link titles and descriptions directly from URL metadata.
 - **Duplicate Warnings**: Live warnings during bookmark entry if a URL is already saved on another page.
+- **Stable Column Layout**: Column widths are strictly locked to equal fractions of the page width; long text wraps rather than stretching columns.
+
 
 ---
 

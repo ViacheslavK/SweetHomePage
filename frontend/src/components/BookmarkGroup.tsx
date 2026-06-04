@@ -5,25 +5,30 @@ import type { BookmarkItem, Link, Group } from '@startme/shared';
 interface BookmarkGroupProps {
   items: BookmarkItem[];
   parentId?: string;
+  widgetId: string;
   viewMode?: 'list' | 'detailed' | 'icons' | 'cloud';
   onAddLink: (parentId?: string) => void;
   onAddGroup: (parentId?: string) => void;
   onEditLink: (link: Link, parentId?: string) => void;
   onEditGroup: (group: Group, parentId?: string) => void;
   onDeleteItem: (itemId: string) => void;
+  onDropLinkOnGroup?: (linkDataStr: string, groupId: string) => void;
 }
 
 export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
   items,
   parentId,
+  widgetId,
   viewMode = 'list',
   onAddLink,
   onAddGroup,
   onEditLink,
   onEditGroup,
   onDeleteItem,
+  onDropLinkOnGroup,
 }) => {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);;
 
   const toggleGroup = (groupId: string) => {
     setCollapsedGroups(prev => ({
@@ -64,22 +69,34 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
               {links.map(link => (
                 <div 
                   key={link.id}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.dataTransfer.setData('application/startme-link', JSON.stringify({
+                      sourceWidgetId: widgetId,
+                      sourceParentId: parentId,
+                      linkId: link.id,
+                      link: link
+                    }));
+                    e.dataTransfer.setData('text/plain', `link:${link.id}`);
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '6px 8px',
                     borderRadius: '6px',
-                    transition: 'background var(--transition-fast)'
+                    transition: 'background var(--transition-fast)',
+                    cursor: 'grab'
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-dropdown-hover)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1, minWidth: 0 }}>
                     <img 
                       src={`https://www.google.com/s2/favicons?sz=16&domain=${getDomain(link.url)}`} 
                       alt="" 
-                      style={{ width: '14px', height: '14px', borderRadius: '2px', flexShrink: 0 }} 
+                      style={{ width: '14px', height: '14px', borderRadius: '2px', flexShrink: 0, marginTop: '3px' }} 
                       onError={e => { (e.target as HTMLElement).style.display = 'none'; }} 
                     />
                     <a 
@@ -91,9 +108,8 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
                         color: 'var(--text-primary)', 
                         textDecoration: 'none',
                         fontWeight: 500,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
+                        wordBreak: 'break-all',
+                        whiteSpace: 'normal'
                       }}
                       title={link.description || link.url}
                     >
@@ -139,6 +155,17 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
               {links.map(link => (
                 <div 
                   key={link.id}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.dataTransfer.setData('application/startme-link', JSON.stringify({
+                      sourceWidgetId: widgetId,
+                      sourceParentId: parentId,
+                      linkId: link.id,
+                      link: link
+                    }));
+                    e.dataTransfer.setData('text/plain', `link:${link.id}`);
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -147,7 +174,8 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
                     borderRadius: '8px',
                     background: 'var(--bg-tag)',
                     border: '1px solid var(--border-glass)',
-                    transition: 'background var(--transition-fast)'
+                    transition: 'background var(--transition-fast)',
+                    cursor: 'grab'
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-dropdown-hover)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-tag)')}
@@ -173,7 +201,7 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
                       >
                         {link.title}
                       </a>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', wordBreak: 'break-all', whiteSpace: 'normal' }}>
                         {link.description || link.url}
                       </span>
                       {link.tags && link.tags.length > 0 && (
@@ -206,6 +234,17 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
               {links.map(link => (
                 <div 
                   key={link.id}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.dataTransfer.setData('application/startme-link', JSON.stringify({
+                      sourceWidgetId: widgetId,
+                      sourceParentId: parentId,
+                      linkId: link.id,
+                      link: link
+                    }));
+                    e.dataTransfer.setData('text/plain', `link:${link.id}`);
+                  }}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -214,7 +253,8 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
                     position: 'relative',
                     padding: '8px 4px',
                     borderRadius: '8px',
-                    transition: 'background var(--transition-fast)'
+                    transition: 'background var(--transition-fast)',
+                    cursor: 'grab'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = 'var(--bg-dropdown-hover)';
@@ -325,6 +365,17 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
               {links.map(link => (
                 <div 
                   key={link.id}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.dataTransfer.setData('application/startme-link', JSON.stringify({
+                      sourceWidgetId: widgetId,
+                      sourceParentId: parentId,
+                      linkId: link.id,
+                      link: link
+                    }));
+                    e.dataTransfer.setData('text/plain', `link:${link.id}`);
+                  }}
                   style={{ 
                     display: 'inline-flex', 
                     alignItems: 'center', 
@@ -333,7 +384,8 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
                     borderRadius: '20px', 
                     background: 'var(--bg-tag)', 
                     border: '1px solid var(--border-glass)', 
-                    transition: 'all var(--transition-fast)' 
+                    transition: 'all var(--transition-fast)',
+                    cursor: 'grab'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = 'var(--bg-dropdown-hover)';
@@ -408,14 +460,47 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
           >
             {/* Folder Header Row */}
             <div 
+              draggable={true}
+              onDragStart={(e) => {
+                e.stopPropagation();
+                e.dataTransfer.setData('application/startme-folder', JSON.stringify({
+                  sourceWidgetId: widgetId,
+                  folderId: item.id,
+                  folderTitle: item.title,
+                  children: item.children
+                }));
+                e.dataTransfer.setData('text/plain', `folder:${item.id}`);
+              }}
+              onDragOver={(e) => {
+                const isLink = e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('application/startme-link');
+                if (!isLink) return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (dragOverGroupId !== item.id) setDragOverGroupId(item.id);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setDragOverGroupId(null);
+                }
+              }}
+              onDrop={(e) => {
+                const linkDataStr = e.dataTransfer.getData('application/startme-link');
+                if (!linkDataStr) return;
+                e.preventDefault();
+                e.stopPropagation();
+                setDragOverGroupId(null);
+                onDropLinkOnGroup?.(linkDataStr, item.id);
+              }}
               style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'space-between',
                 padding: '6px 8px',
                 borderRadius: '6px',
-                background: 'var(--bg-tag)',
-                border: '1px solid var(--border-glass)'
+                background: dragOverGroupId === item.id ? 'var(--bg-dropdown-hover)' : 'var(--bg-tag)',
+                border: dragOverGroupId === item.id ? '1.5px solid var(--accent-color)' : '1px solid var(--border-glass)',
+                cursor: 'grab',
+                transition: 'background 0.15s ease, border-color 0.15s ease'
               }}
               className="group-row-hover"
             >
@@ -477,12 +562,14 @@ export const BookmarkGroup: React.FC<BookmarkGroupProps> = ({
                 <BookmarkGroup
                   items={item.children}
                   parentId={item.id}
+                  widgetId={widgetId}
                   viewMode={viewMode}
                   onAddLink={onAddLink}
                   onAddGroup={onAddGroup}
                   onEditLink={onEditLink}
                   onEditGroup={onEditGroup}
                   onDeleteItem={onDeleteItem}
+                  onDropLinkOnGroup={onDropLinkOnGroup}
                 />
               </div>
             )}

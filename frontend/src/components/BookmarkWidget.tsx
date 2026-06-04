@@ -8,9 +8,10 @@ interface BookmarkWidgetProps {
   widget: Widget;
   pageId: string;
   onSaveWidgetData: (widgetId: string, data: { items?: BookmarkItem[]; viewMode?: 'list' | 'detailed' | 'icons' | 'cloud' }) => void;
+  onDropLinkOnGroup?: (linkDataStr: string, targetWidgetId: string, groupId: string) => void;
 }
 
-export const BookmarkWidget: React.FC<BookmarkWidgetProps> = ({ widget, pageId, onSaveWidgetData }) => {
+export const BookmarkWidget: React.FC<BookmarkWidgetProps> = ({ widget, pageId, onSaveWidgetData, onDropLinkOnGroup }) => {
   const items = (widget.data && widget.data.items) || [];
 
   // Dialog / Form States
@@ -406,12 +407,14 @@ export const BookmarkWidget: React.FC<BookmarkWidgetProps> = ({ widget, pageId, 
         ) : (
           <BookmarkGroup
             items={items}
+            widgetId={widget.id}
             viewMode={currentViewMode}
             onAddLink={handleOpenAddLink}
             onAddGroup={handleOpenAddGroup}
             onEditLink={handleOpenEditLink}
             onEditGroup={handleOpenEditGroup}
             onDeleteItem={handleDeleteItem}
+            onDropLinkOnGroup={(linkDataStr, groupId) => onDropLinkOnGroup?.(linkDataStr, widget.id, groupId)}
           />
         )}
       </div>
