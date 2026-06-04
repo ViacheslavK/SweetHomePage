@@ -306,21 +306,24 @@ router.get('/links/metadata', async (req: Request, res: Response) => {
       // If DNS resolution fails, refuse the request
       return res.json({ title: '', description: '' });
     }
+    // Use canonical parsed URL that passed validation.
+    const safeTargetUrl = parsedUrl.toString();
     // --- end SSRF validation ---
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     try {
-      const response = await fetch(targetUrl, {
+      const response = await fetch(safeTargetUrl, {
         signal: controller.signal,
+        redirect: 'manual',
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
       });
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
+      if (!response.ok || (response.status >= 300 && response.status < 400)) {
         return res.json({ title: '', description: '' });
       }
 
