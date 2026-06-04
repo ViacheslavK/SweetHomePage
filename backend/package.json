@@ -8,10 +8,11 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts"
   },
   "dependencies": {
+    "@startme/shared": "file:../shared",
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "zod": "^3.23.8",
-    "@startme/shared": "file:../shared"
+    "express-rate-limit": "^8.5.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

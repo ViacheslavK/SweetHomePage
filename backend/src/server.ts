@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import * as path from 'path';
+import rateLimit from 'express-rate-limit';
 import router from './routes.js';
 import { initStorage } from './storage.js';
 
@@ -10,15 +11,33 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// --- Rate Limiting (fixes js/missing-rate-limiting, alert #6) ---
+// Stricter limit for API routes that perform file I/O
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,                  // max 100 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }
+});
+
+// Looser limit for the SPA static file route
+const staticLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // API Router
-app.use('/api', router);
+app.use('/api', apiLimiter, router);
 
 // Static frontend distribution serve point
 const publicDir = process.env.PUBLIC_DIR || path.join(process.cwd(), 'public');
 app.use(express.static(publicDir));
 
 // React SPA fallback routing
-app.get('*', (req, res, next) => {
+app.get('*', staticLimiter, (req, res, next) => {
   // If the path starts with /api, let Express handle it normally (should have been matched by router already)
   if (req.path.startsWith('/api')) {
     return next();

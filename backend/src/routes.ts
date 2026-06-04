@@ -13,6 +13,20 @@ import { PageConfig, PageListItem, getAllLinksFromPage } from '@startme/shared';
 
 const router = Router();
 
+/**
+ * Decodes common HTML entities in a single pass to avoid double-unescaping.
+ * e.g. "&amp;amp;" stays as "&amp;" instead of becoming "&" twice.
+ * (Fixes js/double-escaping, alerts #4 and #5)
+ */
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');  // must be last to avoid double-decoding
+}
+
 // --- Global Settings ---
 router.get('/settings', async (req: Request, res: Response) => {
   try {
@@ -316,13 +330,7 @@ router.get('/links/metadata', async (req: Request, res: Response) => {
       let title = '';
       const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
       if (titleMatch && titleMatch[1]) {
-        title = titleMatch[1]
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#039;/g, "'")
-          .trim();
+        title = decodeHtmlEntities(titleMatch[1].trim());
       }
 
       // Extract description
@@ -331,19 +339,15 @@ router.get('/links/metadata', async (req: Request, res: Response) => {
                         html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i) ||
                         html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i);
       if (descMatch && descMatch[1]) {
-        description = descMatch[1]
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#039;/g, "'")
-          .trim();
+        description = decodeHtmlEntities(descMatch[1].trim());
       }
 
       res.json({ title, description });
     } catch (fetchErr) {
       clearTimeout(timeoutId);
-      console.warn(`Metadata fetch failed for url ${targetUrl}:`, fetchErr);
+      // Log safely — pass targetUrl as a structured argument, not interpolated into the format string
+      // (Fixes js/tainted-format-string, alert #3)
+      console.warn('Metadata fetch failed:', { url: targetUrl, error: fetchErr });
       res.json({ title: '', description: '' });
     }
   } catch (error: any) {

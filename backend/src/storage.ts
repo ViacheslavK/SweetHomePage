@@ -9,6 +9,28 @@ import {
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 
+/**
+ * Validates a page ID against a strict allowlist and rejects any value that
+ * could be used for path traversal (CWE-23 / js/path-injection fix).
+ * Only lowercase alphanumeric characters, hyphens, and underscores are allowed.
+ * Throws if the id is invalid.
+ */
+function sanitizePageId(id: string): string {
+  if (!id || typeof id !== 'string') {
+    throw new Error('Page ID must be a non-empty string');
+  }
+  // Strict allowlist: lowercase a-z, 0-9, hyphen, underscore; 1-64 chars
+  if (!/^[a-z0-9_-]{1,64}$/.test(id)) {
+    throw new Error(`Invalid page ID: "${id.slice(0, 64)}" (only a-z, 0-9, _ and - are allowed)`);
+  }
+  // Extra guard: resolved path must remain inside DATA_DIR
+  const resolved = path.resolve(DATA_DIR, `page-${id}.json`);
+  if (!resolved.startsWith(path.resolve(DATA_DIR) + path.sep)) {
+    throw new Error('Page ID would escape the data directory');
+  }
+  return id;
+}
+
 export async function initStorage(): Promise<void> {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
@@ -103,26 +125,29 @@ export async function writeGlobalSettings(settings: GlobalSettings): Promise<voi
 }
 
 export async function readPageConfig(id: string): Promise<PageConfig> {
-  const filePath = path.join(DATA_DIR, `page-${id}.json`);
+  const safeId = sanitizePageId(id);
+  const filePath = path.join(DATA_DIR, `page-${safeId}.json`);
   const content = await fs.readFile(filePath, 'utf-8');
   const parsed = JSON.parse(content);
   return PageConfigSchema.parse(parsed);
 }
 
 export async function writePageConfig(id: string, config: PageConfig): Promise<void> {
-  const filePath = path.join(DATA_DIR, `page-${id}.json`);
+  const safeId = sanitizePageId(id);
+  const filePath = path.join(DATA_DIR, `page-${safeId}.json`);
   // Validate before writing
   const validated = PageConfigSchema.parse(config);
   await fs.writeFile(filePath, JSON.stringify(validated, null, 2), 'utf-8');
 }
 
 export async function deletePageConfig(id: string): Promise<void> {
-  const filePath = path.join(DATA_DIR, `page-${id}.json`);
+  const safeId = sanitizePageId(id);
+  const filePath = path.join(DATA_DIR, `page-${safeId}.json`);
   try {
     await fs.unlink(filePath);
   } catch (error) {
-    // If it doesn't exist, ignore
-    console.warn(`Attempted to delete page-${id}.json which didn't exist:`, error);
+    // If it doesn't exist, ignore — log safely without interpolating user input
+    console.warn('Attempted to delete a page config file that did not exist', { pageId: safeId, error });
   }
 }
 
